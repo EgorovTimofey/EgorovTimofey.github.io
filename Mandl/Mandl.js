@@ -37,7 +37,8 @@ export function initGL() {
         precision highp float;
         out vec4 f_color;
         in vec4 v_color;
-        
+
+        uniform float Time;
         vec2 CmplAddCmpl ( vec2 A, vec2 B) 
         {        
             float n1 = 0.0;
@@ -77,16 +78,32 @@ export function initGL() {
             }
             return n;
         }
+
+        float JuliaFunc(vec2 var, vec2 c) {
+            vec2 C0 = vec2(c.xy);
+            float n = 0.0;
+            while (CmplNorm2(var) < 4.0 && n < 255.0)
+            {
+                var = CmplMulCmpl (var, var);
+                var = CmplAddCmpl (var, C0);
+                n = n + 1.0;
+            }
+            return n;
+        }
+
         void main() {
             float x0 = -2.0, x1 = 2.0, y0 = -2.0, y1 = 2.0;
+            float PI = 3.141592 / 2.0;
             vec2 z;
-            float n;
+            vec2 newz;
+            vec2 c = vec2(0.35 + 0.08 * sin(Time + 3.0), 0.39 + 0.08 * sin(1.1 * Time));
             z = vec2(x0 + gl_FragCoord.x * (x1 - x0) / 1000.0, y0 + gl_FragCoord.y * (y1 - y0) / 1000.0);
-            n = Mandelbrot(z);
-            f_color = vec4(v_color.x * n / 255.0, v_color.y * n / 510.0, v_color.z * n / 1020.0, 1);
+            newz = vec2((z.x * cos(Time) + z.y * sin(Time)) * (1.0 + sin(Time)), (z.y * cos(Time) - z.x * sin(Time)) * (1.0 + sin(Time)));
+            f_color = vec4(v_color.x * JuliaFunc(newz, c) / 255.0, v_color.y * JuliaFunc(newz, c) / 510.0, v_color.z * JuliaFunc(newz, c) / 1020.0, 1);
         }
     `;
-
+    
+    const StartTime = Date.now() / 1000.0;
     const vertexSh = loadShader(gl, gl.VERTEX_SHADER, vs);
     const fragmentSh = loadShader(gl, gl.FRAGMENT_SHADER, fs);
 
@@ -94,7 +111,11 @@ export function initGL() {
     gl.attachShader(shaderProgram, vertexSh);
     gl.attachShader(shaderProgram, fragmentSh);
     gl.linkProgram(shaderProgram);
-
+    
+    
+    
+    
+    
     const vBuf = gl.createBuffer();
 
     const dataBuf = [-1, -1, 0, 1, 1, 0, 1, 1,
@@ -106,6 +127,8 @@ export function initGL() {
     const render = () => {
         gl.bindBuffer(gl.ARRAY_BUFFER, vBuf);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(dataBuf), gl.STATIC_DRAW);
+        const Time = gl.getUniformLocation(shaderProgram, "Time");
+        gl.uniform1f(Time, Date.now() / 1000.0 - StartTime);
 
         gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 8 * 4, 0);     // pos
         gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 8 * 4, 4 * 4); // color
